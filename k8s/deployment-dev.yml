@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: crowdfunding-service
+  labels:
+    app: crowdfunding-service
+spec:
+  ports:
+    - name: http
+      port: 8280
+  selector:
+    app: crowdfunding-service
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: crowdfunding-service
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: crowdfunding-service
+        version: v1
+    spec:
+      containers:
+        - name: crowdfunding-app
+          image: gcr.io/profitus-dev/crowdfunding-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8280
+          livenessProbe:
+            httpGet:
+              path: /crowdfunding
+              port: 8280
+            initialDelaySeconds: 40
+            periodSeconds: 40
+          env:
+            - name: SERVER_PORT
+              value: '8280'
+            - name: AXON_AXONSERVER_SERVERS
+              value: axonserver
+        # proxy_container
+        - name: cloudsql-proxy
+          image: gcr.io/cloudsql-docker/gce-proxy:1.11
+          command: ["/cloud_sql_proxy", "--dir=/cloudsql",
+                    "-instances=profitus-dev:europe-north1:profitus-users-db-dev=tcp:3306",
+                    "-credential_file=/secrets/cloudsql/credentials.json"]
+          volumeMounts:
+            - name: cloudsql-instance-credentials
+              mountPath: /secrets/cloudsql
+              readOnly: true
+            - name: cloudsql
+              mountPath: /cloudsql
+      # volumes
+      volumes:
+        - name: cloudsql-instance-credentials
+          secret:
+            secretName: cloudsql-instance-credentials
+        - name: cloudsql
+          emptyDir:

@@ -1,0 +1,25 @@
+steps:
+  - name: 'gcr.io/cloud-builders/gradle:5.6.2-jdk-8'
+    args: ['clean', 'build']
+    dir: '${_APP_NAME}'
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '--tag=gcr.io/$PROJECT_ID/${_APP_NAME}', '.']
+    dir: '${_APP_NAME}'
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_APP_NAME}', '.']
+    dir: '${_APP_NAME}'
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['tag', '${_APP_NAME}', 'gcr.io/$PROJECT_ID/${_APP_NAME}']
+    dir: '${_APP_NAME}'
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/${_APP_NAME}']
+    dir: '${_APP_NAME}'
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args: ['apply', '-f', 'deployment-dev.yml']
+    dir: '${_APP_NAME}/k8s'
+    env:
+      - 'CLOUDSDK_CONTAINER_CLUSTER=profitus-dev'
+      - 'CLOUDSDK_COMPUTE_ZONE=europe-north1-a'
+substitutions:
+  _APP_NAME: name
+  _VERSION: 1.0.20
